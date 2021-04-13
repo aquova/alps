@@ -1,0 +1,7 @@
+# Rust Files
+/target
+*.lock
+
+# Development files
+**/roms/*
+*.code-workspace
