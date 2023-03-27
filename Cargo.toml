@@ -1,7 +1,0 @@
-[package]
-name = "alps"
-version = "0.1.0"
-authors = ["aquova <abrick912@gmail.com>"]
-edition = "2018"
-
-[dependencies]
