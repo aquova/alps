@@ -1,6 +1,7 @@
 # alps
 # Another Lightweight Patching Suite
 
+import streams
 import os
 import ips
 
@@ -19,36 +20,22 @@ proc main() =
     let patch_filename = paramStr(2)
     let output_filename = paramStr(3)
 
-    var source_f, patch_f, output_f: File
+    var patch = newFileStream(patch_filename, FileMode.fmRead)
+    let patch_size = int(patch_filename.getFileSize())
 
-    if not source_f.open(source_filename):
-        echo("Source file does not exist")
-        quit(1)
-    var source = source_f.readall()
-    source_f.close()
+    if patch.isNil():
+        raise newException(IOError, "Unable to open patch file")
 
-    if not patch_f.open(patch_filename):
-        echo("Patch file does not exist")
-        quit(1)
-    var patch = patch_f.readall()
-    patch_f.close()
-
-    if is_ips(patch):
+    if is_ips(patch, patch_size):
         try:
-            patch_ips(patch, source)
+            patch_ips(patch, patch_size, source_filename, output_filename)
         except Exception as e:
             echo("Error! ", e.msg)
             quit(2)
-
-        let success = output_f.open(output_filename, FileMode.fmWrite)
-        if not success:
-            echo("Unable to open ", output_filename)
-            quit(1)
-
-        output_f.write(source)
-        output_f.close()
     else:
         echo("I was not able to identify the patch file")
+
+    patch.close()
 
 when isMainModule:
     main()

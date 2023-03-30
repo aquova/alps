@@ -1,46 +1,61 @@
+import streams
+import os
+
 import err
 import utils
 
 const OFFSET_LEN = 3
 const SIZE_LEN = 2
-const IPS_HEADER = @['P', 'A', 'T', 'C', 'H']
-const IPS_FOOTER = @['E', 'O', 'F']
+const IPS_HEADER = "PATCH"
+const IPS_FOOTER = "EOF"
+const BUFFER_SIZE = 0xFFFF
 
-proc is_ips*(patch: openarray[char]): bool =
-    let header_match = patch[0..<IPS_HEADER.len()] == IPS_HEADER
-    let footer_match = patch[^IPS_FOOTER.len()..^1] == IPS_FOOTER
-    return header_match and footer_match
+proc is_ips*(patch: FileStream, length: int): bool =
+    let header = patch.readStr(IPS_HEADER.len())
+    patch.setPosition(length - IPS_FOOTER.len())
+    let footer = patch.readStr(IPS_FOOTER.len())
+    patch.setPosition(0)
+    return header == IPS_HEADER and footer == IPS_FOOTER
 
-proc patch_ips*(patch: openarray[char], output: var openarray[char]) {.raises: [CorruptionError].}=
-    var idx = IPS_HEADER.len()
-    let footer_offset = patch.len() - IPS_FOOTER.len()
+proc patch_ips*(patch: FileStream, patch_len: int, source_name, output_name: string) =
+    if not source_name.fileExists():
+        raise newException(IOError, "Source file does not exist")
+
+    # TODO: May need to check for directory permissions?
+    copyFile(source_name, output_name)
+    var output = open(output_name, FileMode.fmReadWriteExisting)
+    let source_len = int(source_name.getFileSize())
+    var buffer: array[BUFFER_SIZE, uint8]
+
+    patch.setPosition(IPS_HEADER.len())
+    let footer_offset = patch_len - IPS_FOOTER.len()
     while true:
+        let idx = patch.getPosition()
         if idx == footer_offset:
             break
         elif idx > footer_offset:
             raise newException(CorruptionError, "End of file was overrun")
 
-        let offset = pack(patch[idx..<(idx + OFFSET_LEN)])
-        idx += OFFSET_LEN
-        var size = pack(patch[idx..<(idx + SIZE_LEN)])
-        idx += SIZE_LEN
+        let offset = patch.readUintX(OFFSET_LEN)
+        var size = patch.readUintX(SIZE_LEN)
 
         var rle = false
         if size == 0:
             rle = true
-            size = pack(patch[idx..<(idx + SIZE_LEN)])
-            idx += SIZE_LEN
+            size = patch.readUintX(SIZE_LEN)
 
-        if offset + size > output.len():
+        if offset + size > source_len:
             raise newException(CorruptionError, "This patch file is corrupted")
 
+        output.setFilePos(offset)
         if rle:
-            let data = patch[idx]
-            for i in countup(0, size - 1):
-                output[offset + i] = data
-            inc(idx)
+            let data = patch.readUint8()
+            for i in 0..<size:
+                buffer[i] = data
+            discard output.writeBytes(buffer, 0, size)
         else:
-            for i in countup(0, size - 1):
-                output[offset + i] = patch[idx + i]
-            idx += size
+            discard patch.readData(addr(buffer), size)
+            discard output.writeBytes(buffer, 0, size)
+
+    output.close()
 
