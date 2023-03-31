@@ -8,7 +8,6 @@ const OFFSET_LEN = 3
 const SIZE_LEN = 2
 const IPS_HEADER = "PATCH"
 const IPS_FOOTER = "EOF"
-const BUFFER_SIZE = 0xFFFF
 
 proc is_ips*(patch: FileStream, length: int): bool =
     let header = patch.readStr(IPS_HEADER.len())
@@ -25,7 +24,6 @@ proc patch_ips*(patch: FileStream, patch_len: int, source_name, output_name: str
     copyFile(source_name, output_name)
     var output = open(output_name, FileMode.fmReadWriteExisting)
     let source_len = int(source_name.getFileSize())
-    var buffer: array[BUFFER_SIZE, uint8]
 
     patch.setPosition(IPS_HEADER.len())
     let footer_offset = patch_len - IPS_FOOTER.len()
@@ -49,12 +47,14 @@ proc patch_ips*(patch: FileStream, patch_len: int, source_name, output_name: str
 
         output.setFilePos(offset)
         if rle:
+            var buffer: seq[uint8]
             let data = patch.readUint8()
             for i in 0..<size:
-                buffer[i] = data
+                buffer.add(data)
             discard output.writeBytes(buffer, 0, size)
         else:
-            discard patch.readData(addr(buffer), size)
+            var buffer = newSeq[uint8](size)
+            discard patch.readData(addr(buffer[0]), size)
             discard output.writeBytes(buffer, 0, size)
 
     output.close()
