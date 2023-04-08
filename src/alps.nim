@@ -3,6 +3,9 @@
 
 import streams
 import os
+
+import bps
+import err
 import ips
 
 proc usage() =
@@ -32,6 +35,13 @@ proc main() =
         except Exception as e:
             echo("Error! ", e.msg)
             quit(2)
+    elif is_bps(patch, patch_size):
+        try:
+            patch_bps(patch, patch_size, source_filename, output_filename)
+        except CorruptionError as e:
+            echo(e.msg)
+            if output_filename.fileExists():
+                output_filename.removeFile()
     else:
         echo("I was not able to identify the patch file")
 
