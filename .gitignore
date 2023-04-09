@@ -1,7 +1,8 @@
-# Rust Files
-/target
-*.lock
+# Ignore binary files
+*
+!*.*
+!*/
 
 # Development files
 **/roms/*
-*.code-workspace
+*.ips

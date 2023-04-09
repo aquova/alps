@@ -24,7 +24,7 @@ The IPS file structure is made just like that:
 | Section | Size (Bytes) | Description |
 | ------- | ------------ | ----------- |
 | Offset  | 3            | The offset where the patch will be placed in the file to patch |
-| Size    | 3            | The size of the data to put from the specified offset in the patching file |
+| Size    | 2            | The size of the data to put from the specified offset in the patching file |
 | Data    | Size         | Contains a number of Size bytes of data to be copied in the file to patch |
 
 And that's the info you can find around. Now the technical stuff and RLE infos.
